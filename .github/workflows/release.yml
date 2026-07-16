@@ -331,10 +331,20 @@ jobs:
             platform: mac
             target: dmg
             arch: x64
-          - label: Linux x64
+          - label: Linux AppImage x64
             runner: blacksmith-32vcpu-ubuntu-2404
             platform: linux
             target: AppImage
+            arch: x64
+          - label: Linux deb x64
+            runner: blacksmith-32vcpu-ubuntu-2404
+            platform: linux
+            target: deb
+            arch: x64
+          - label: Linux rpm x64
+            runner: blacksmith-32vcpu-ubuntu-2404
+            platform: linux
+            target: rpm
             arch: x64
           - label: Windows x64
             runner: blacksmith-32vcpu-windows-2025
@@ -571,6 +581,8 @@ jobs:
             "release/*.dmg" \
             "release/*.zip" \
             "release/*.AppImage" \
+            "release/*.deb" \
+            "release/*.rpm" \
             "release/*.exe" \
             "release/*.blockmap" \
             "release/*.yml"; do
@@ -601,7 +613,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v7
         with:
-          name: desktop-${{ matrix.platform }}-${{ matrix.arch }}
+          name: desktop-${{ matrix.platform }}-${{ matrix.target }}-${{ matrix.arch }}
           path: release-publish/*
           if-no-files-found: error
 
@@ -753,6 +765,8 @@ jobs:
             release-assets/*.dmg
             release-assets/*.zip
             release-assets/*.AppImage
+            release-assets/*.deb
+            release-assets/*.rpm
             release-assets/*.exe
             release-assets/*.blockmap
             release-assets/*.yml
@@ -773,6 +787,8 @@ jobs:
             release-assets/*.dmg
             release-assets/*.zip
             release-assets/*.AppImage
+            release-assets/*.deb
+            release-assets/*.rpm
             release-assets/*.exe
             release-assets/*.blockmap
             release-assets/*.yml
