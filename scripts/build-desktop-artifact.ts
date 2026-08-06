@@ -143,7 +143,7 @@ const DEB_DEPENDENCIES = [
   "libuuid1",
   "libsecret-1-0",
   "libasound2t64 | libasound2",
-  "libgbm1"
+  "libgbm1",
 ] as const;
 
 const RPM_DEPENDENCIES = [
