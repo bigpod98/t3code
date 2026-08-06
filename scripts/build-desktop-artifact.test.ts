@@ -35,6 +35,7 @@ import {
   resolveDesktopUpdateChannel,
   resolveDesktopWebAssetBrand,
   renderLinuxHeadlessLauncher,
+  resolveLinuxTargets,
   resolveResourceMonitorRustTargets,
   resourceMonitorExecutableName,
   resolveGitHubPublishConfig,
@@ -550,6 +551,50 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.equal(win.icon, "icon.ico");
       assert.equal(win.signAndEditExecutable, true);
       assert.notProperty(win, "azureSignOptions");
+    }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
+  );
+
+  it("splits a comma-separated Linux target into one target per package", () => {
+    assert.deepStrictEqual(resolveLinuxTargets("AppImage"), ["AppImage"]);
+    assert.deepStrictEqual(resolveLinuxTargets("AppImage,deb,rpm"), ["AppImage", "deb", "rpm"]);
+    assert.deepStrictEqual(resolveLinuxTargets(" AppImage , deb "), ["AppImage", "deb"]);
+  });
+
+  it.effect("emits every requested Linux package from a single build", () =>
+    Effect.gen(function* () {
+      const all = yield* createBuildConfig(
+        "linux",
+        "AppImage,deb,rpm",
+        "1.2.3",
+        false,
+        false,
+        undefined,
+        undefined,
+        "/tmp/t3",
+      );
+      const appImageOnly = yield* createBuildConfig(
+        "linux",
+        "AppImage",
+        "1.2.3",
+        false,
+        false,
+        undefined,
+        undefined,
+      );
+
+      assert.deepStrictEqual((all.linux as Record<string, unknown>).target, [
+        "AppImage",
+        "deb",
+        "rpm",
+      ]);
+      // Both fpm-backed formats are configured from the one run, each with its
+      // own dependency list and the headless launcher.
+      assert.deepStrictEqual((all.deb as Record<string, unknown>).fpm, ["/tmp/t3=/usr/bin/t3"]);
+      assert.deepStrictEqual((all.rpm as Record<string, unknown>).fpm, ["/tmp/t3=/usr/bin/t3"]);
+
+      // An AppImage-only build stays free of package-format sections.
+      assert.notProperty(appImageOnly, "deb");
+      assert.notProperty(appImageOnly, "rpm");
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
 
