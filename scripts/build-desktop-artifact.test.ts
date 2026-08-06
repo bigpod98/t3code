@@ -628,6 +628,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         "libuuid1",
         "libsecret-1-0",
         "libasound2t64 | libasound2",
+        "libgbm1",
       ]);
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
