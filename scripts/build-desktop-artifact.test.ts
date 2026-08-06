@@ -34,7 +34,6 @@ import {
   resolveDesktopProductName,
   resolveDesktopUpdateChannel,
   resolveDesktopWebAssetBrand,
-  renderLinuxHeadlessLauncher,
   resolveLinuxTargets,
   resolveResourceMonitorRustTargets,
   resourceMonitorExecutableName,
@@ -570,7 +569,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         false,
         undefined,
         undefined,
-        "/tmp/t3",
       );
       const appImageOnly = yield* createBuildConfig(
         "linux",
@@ -587,10 +585,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         "deb",
         "rpm",
       ]);
-      // Both fpm-backed formats are configured from the one run, each with its
-      // own dependency list and the headless launcher.
-      assert.deepStrictEqual((all.deb as Record<string, unknown>).fpm, ["/tmp/t3=/usr/bin/t3"]);
-      assert.deepStrictEqual((all.rpm as Record<string, unknown>).fpm, ["/tmp/t3=/usr/bin/t3"]);
+      // Both fpm-backed formats are configured from the one run.
+      assert.property(all, "deb");
+      assert.property(all, "rpm");
 
       // An AppImage-only build stays free of package-format sections.
       assert.notProperty(appImageOnly, "deb");
@@ -608,7 +605,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         false,
         undefined,
         undefined,
-        "/tmp/t3",
       );
 
       const linux = config.linux as Record<string, unknown>;
@@ -633,11 +629,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         "libsecret-1-0",
         "libasound2t64 | libasound2",
       ]);
-      assert.deepStrictEqual(deb.fpm, ["/tmp/t3=/usr/bin/t3"]);
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
 
-  it.effect("includes runtime dependencies and the headless launcher in RPM packages", () =>
+  it.effect("includes runtime dependencies in RPM packages", () =>
     Effect.gen(function* () {
       const config = yield* createBuildConfig(
         "linux",
@@ -647,7 +642,6 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         false,
         undefined,
         undefined,
-        "/tmp/t3",
       );
 
       const rpm = config.rpm as Record<string, unknown>;
@@ -664,23 +658,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         "libsecret",
         "mesa-libgbm",
       ]);
-      assert.deepStrictEqual(rpm.fpm, ["/tmp/t3=/usr/bin/t3"]);
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
-
-  it("renders a headless launcher for production and nightly packages", () => {
-    assert.equal(
-      renderLinuxHeadlessLauncher("1.2.3"),
-      [
-        "#!/bin/sh",
-        "set -eu",
-        "export ELECTRON_RUN_AS_NODE=1",
-        `exec '/opt/T3 Code (Alpha)/t3code' '/opt/T3 Code (Alpha)/resources/app.asar.unpacked/apps/server/dist/bin.mjs' "$@"`,
-        "",
-      ].join("\n"),
-    );
-    assert.match(renderLinuxHeadlessLauncher("1.2.3-nightly.20260720.1"), /T3 Code \(Nightly\)/);
-  });
 
   it("stages the resource monitor as an external executable resource", () => {
     assert.deepStrictEqual(DESKTOP_EXTRA_RESOURCES, [
