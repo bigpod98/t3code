@@ -1555,6 +1555,23 @@ function quotePosixShellArgument(value: string): string {
   return `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
+/**
+ * Splits a comma-separated Linux target string, for example "AppImage,deb,rpm",
+ * so one electron-builder run emits every package from the same staged app.
+ *
+ * The alternative — one release-matrix entry per format — collides on the
+ * upload artifact name (`desktop-${platform}-${arch}` is identical for two
+ * entries that differ only by target), which is what sank #1655. artifactName's
+ * ${ext} already keeps the output files apart, so a single run needs no extra
+ * runner and no extra release wall-clock.
+ */
+export function resolveLinuxTargets(target: string): ReadonlyArray<string> {
+  return target
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+}
+
 export function renderLinuxHeadlessLauncher(version: string): string {
   const installDir = `/opt/${resolveDesktopProductName(version)}`;
   const desktopExecutable = `${installDir}/t3code`;
@@ -1633,8 +1650,9 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   }
 
   if (platform === "linux") {
+    const linuxTargets = resolveLinuxTargets(target);
     buildConfig.linux = {
-      target: [target],
+      target: linuxTargets,
       executableName: "t3code",
       icon: "icons",
       category: "Development",
@@ -1658,14 +1676,14 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       },
     };
 
-    if (target === "deb") {
+    if (linuxTargets.includes("deb")) {
       buildConfig.deb = {
         depends: [...DEB_DEPENDENCIES],
         ...(linuxHeadlessLauncherPath ? { fpm: [`${linuxHeadlessLauncherPath}=/usr/bin/t3`] } : {}),
       };
     }
 
-    if (target === "rpm") {
+    if (linuxTargets.includes("rpm")) {
       buildConfig.rpm = {
         depends: [...RPM_DEPENDENCIES],
         ...(linuxHeadlessLauncherPath ? { fpm: [`${linuxHeadlessLauncherPath}=/usr/bin/t3`] } : {}),
@@ -1954,8 +1972,10 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     yield* fs.writeFileString(macEntitlementsPath, renderMacPasskeyEntitlements(macPasskeySigning));
   }
 
+  const linuxPackageTargets = resolveLinuxTargets(options.target);
   const linuxHeadlessLauncherPath =
-    options.platform === "linux" && (options.target === "deb" || options.target === "rpm")
+    options.platform === "linux" &&
+    (linuxPackageTargets.includes("deb") || linuxPackageTargets.includes("rpm"))
       ? path.join(stageRoot, "t3")
       : undefined;
   if (linuxHeadlessLauncherPath) {
